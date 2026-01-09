@@ -1,27 +1,5 @@
-import type { SubdistrictVoteData } from '../types/votes.type';
 import { deserialize } from 'flatgeobuf/lib/mjs/geojson.js';
 import type { IGeoJsonFeature } from 'flatgeobuf';
-
-// Function to calculate the centroid of each area
-function getAreaCentroids(geojson: GeoJSON.Feature[], data: SubdistrictVoteData[]) {
-	console.log('Calculating centroids for area...', geojson);
-	return data
-		.map((dataRow: SubdistrictVoteData) => {
-			const areaName = dataRow['Nama Kelurahan_2014'];
-
-			// Find the corresponding feature in the GeoJSON
-			const feature = geojson.find((f) => f?.properties?.NAME === areaName.toUpperCase());
-			if (feature && feature.geometry.type === 'Point') {
-				return {
-					...dataRow,
-					lat: feature.geometry.coordinates[1],
-					lon: feature.geometry.coordinates[0]
-				};
-			}
-			return null;
-		})
-		.filter(Boolean);
-}
 
 function processArrowData(processedData: GeoJSON.Feature[]) {
 	const MIN_SIZE = 6;
@@ -78,4 +56,4 @@ async function loadFlatGeobuf(file = '/batas_provinsi.fgb') {
 	}
 }
 
-export { getAreaCentroids, processArrowData, buildPopupMessage, loadFlatGeobuf };
+export { processArrowData, buildPopupMessage, loadFlatGeobuf };
