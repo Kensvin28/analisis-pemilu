@@ -277,9 +277,6 @@
 	<div bind:this={mapContainer} class="map">
 		<p>Loading map...</p>
 	</div>
-	<div>{mapLoaded}</div>
-	<div>{selectedYear}</div>
-	<div>{!!processedDataWithArrows}</div>
 	{#if mapLoaded && selectedYear === 'swing' && processedDataWithArrows}
 		{#each processedDataWithArrows as data, i (i)}
 			{#if data.properties?.comparison_kota_jokowi_percentage_change}
