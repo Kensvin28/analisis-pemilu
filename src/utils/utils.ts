@@ -36,7 +36,7 @@ function buildPopupMessage(area: string, change: number) {
 	return popupMessage;
 }
 
-async function loadFlatGeobuf(file = '/batas_provinsi.fgb') {
+async function loadFlatGeobuf(file: string = '/batas_provinsi.fgb') {
 	let features: IGeoJsonFeature[] = [];
 
 	try {
