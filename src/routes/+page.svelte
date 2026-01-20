@@ -4,12 +4,13 @@
 	import maplibregl from 'maplibre-gl';
 	import { loadFlatGeobuf, processArrowData } from '../utils/utils';
 	import ArrowMarkerMapLibre from '$lib/ArrowMarkerMapLibre.svelte';
+	import LoadingBar from '$lib/components/LoadingBar.svelte';
 
 	let geojsonArray: any[] | null = null;
 	let processedDataWithArrows: any[] | null = $state(null);
 	let boundariesCollection: any = null;
 
-	let selectedYear: string = $state('2014');
+	let selectedYear: string = $state('swing');
 
 	// --- Constants ---
 	const JOKOWI_COLOR = '#E11F26'; // Red
@@ -20,6 +21,7 @@
 	let mapContainer: HTMLDivElement; // HTML element bound to the map
 	let map: maplibregl.Map;
 	let mapLoaded: boolean = $state(false);
+	let loadingBar: LoadingBar;
 
 	// Initial map view for Indonesia
 	const initialState = { lng: 118, lat: -2.5, zoom: 4 };
@@ -99,8 +101,9 @@
 	}
 
 	async function loadChloropleth() {
+		loadingBar.resetProgress();
 		// 1. Load GeoJSON features and combine using Turf
-		geojsonArray = await loadFlatGeobuf('/kab_kota_borders_cleaned.fgb');
+		geojsonArray = await loadFlatGeobuf('/kab_kota_borders_cleaned.fgb', loadingBar, 50);
 		// filter out features without data
 		geojsonArray = geojsonArray.filter(
 			(feature) => feature.properties?.comparison_kota_jokowi_percentage_change != null
@@ -109,6 +112,7 @@
 			type: 'FeatureCollection',
 			features: geojsonArray
 		};
+		loadingBar.updateProgress(100);
 
 		// -- MapLibre Setup --
 		map = new maplibregl.Map({
@@ -196,20 +200,22 @@
 			PRABOWO_COLOR,
 			NEUTRAL_COLOR
 		]);
-		selectedYear = year;
 	}
 
 	async function loadSwing() {
+		loadingBar.resetProgress();
 		// 1. Load GeoJSON features and combine using Turf
-		geojsonArray = await loadFlatGeobuf('/kab_kota.fgb');
+		geojsonArray = await loadFlatGeobuf('/kab_kota.fgb', loadingBar, 33);
 		// filter out features without data
 		geojsonArray = geojsonArray.filter(
 			(feature) => feature.properties?.comparison_kota_jokowi_percentage_change
 		);
+		loadingBar.updateProgress(50);
 		// 2. Process data for centroids and arrows
 		processedDataWithArrows = processArrowData(geojsonArray);
-		const boundaryGeojson = await loadFlatGeobuf('/batas_provinsi.fgb');
+		const boundaryGeojson = await loadFlatGeobuf('/batas_provinsi.fgb', loadingBar, 25);
 		boundariesCollection = featureCollection(boundaryGeojson);
+		loadingBar.updateProgress(100);
 		// -- MapLibre Setup --
 		map = new maplibregl.Map({
 			container: mapContainer,
@@ -242,10 +248,34 @@
 		});
 	}
 
-	const loadMap = async (selectedYear: string) => {
+	const handleChange = (target: HTMLSelectElement) => {
 		mapLoaded = false;
-		setYear(selectedYear);
-		if (selectedYear === 'swing') {
+		const oldValue = selectedYear;
+		const newValue = target.value;
+		if (newValue === 'swing') {
+			// chloropleth -> swing: reload the map
+			if (map) {
+				map.remove();
+			}
+			setMap(newValue);
+		} else {
+			if (oldValue === 'swing') {
+				// swing -> chloropleth: reload the map
+				if (map) {
+					map.remove();
+				}
+				setMap(newValue);
+			} else {
+				// 2014 -> 2019: just change the year
+				// 2019 -> 2014: just change the year
+				setYear(newValue);
+			}
+		}
+		selectedYear = newValue;
+	};
+
+	const setMap = async (selection: string) => {
+		if (selection === 'swing') {
 			await loadSwing();
 		} else {
 			await loadChloropleth();
@@ -253,11 +283,7 @@
 	};
 
 	onMount(async () => {
-		if (selectedYear === 'swing') {
-			await loadSwing();
-		} else {
-			await loadChloropleth();
-		}
+		setMap(selectedYear);
 	});
 
 	onDestroy(() => {
@@ -269,13 +295,17 @@
 
 <div class="page-container">
 	<h1>Pilpres 2014 vs 2019 - Change in Vote Percentage by Kabupaten/Kota</h1>
-	<select bind:value={selectedYear} onchange={() => loadMap(selectedYear)}>
+	<select
+		onchange={(event: Event) => {
+			handleChange(event.currentTarget as HTMLSelectElement);
+		}}
+	>
 		<option value="swing">Swing</option>
 		<option value="2014">2014</option>
 		<option value="2019">2019</option>
 	</select>
 	<div bind:this={mapContainer} class="map">
-		<p>Loading map...</p>
+		<LoadingBar bind:this={loadingBar} />
 	</div>
 	{#if mapLoaded && selectedYear === 'swing' && processedDataWithArrows}
 		{#each processedDataWithArrows as data, i (i)}
@@ -307,13 +337,6 @@
 		font-weight: bold;
 	}
 
-	.map > p {
-		text-align: center;
-		width: 100%;
-		height: 100%;
-		line-height: 512px;
-	}
-
 	footer {
 		display: flex;
 		flex-direction: column;
@@ -333,8 +356,9 @@
 	}
 
 	.map {
+		position: relative;
 		width: 100%;
-		height: 100%;
+		height: 512px;
 	}
 
 	.disclaimer {

@@ -1,5 +1,6 @@
 import { deserialize } from 'flatgeobuf/lib/mjs/geojson.js';
 import type { IGeoJsonFeature } from 'flatgeobuf';
+import type LoadingBar from '$lib/components/LoadingBar.svelte';
 
 function processArrowData(processedData: GeoJSON.Feature[]) {
 	const MIN_SIZE = 6;
@@ -36,24 +37,52 @@ function buildPopupMessage(area: string, change: number) {
 	return popupMessage;
 }
 
-async function loadFlatGeobuf(file: string = '/batas_provinsi.fgb') {
-	let features: IGeoJsonFeature[] = [];
+async function loadFlatGeobuf(
+	file = '/batas_provinsi.fgb',
+	loadingBar: LoadingBar,
+	totalLoadingValue: number = 100 // total progress value for loadFlatGeobuf process
+) {
+	const features: IGeoJsonFeature[] = [];
 
-	try {
-		const response = await fetch(file);
-		const loadedFeatures = [];
+	const response = await fetch(file);
+	if (!response.body) throw new Error('No response body');
 
-		for await (const feature of deserialize(response?.body as ReadableStream<Uint8Array>)) {
-			loadedFeatures.push(feature);
-		}
-
-		features = loadedFeatures;
-		return features;
-	} catch (error) {
-		console.error('Error loading FlatGeobuf:', error);
-		alert('Error loading FlatGeobuf file: ' + (error as Error).message);
-		return features;
+	const contentLength = response.headers.get('Content-Length');
+	if (!contentLength) {
+		console.warn('No Content-Length header, progress unavailable');
 	}
+
+	const total = contentLength ? parseInt(contentLength, 10) : 0;
+	let loadedBytes = 0;
+
+	// Get current progress
+	const progress = loadingBar.getProgress() ?? 0;
+
+	// Wrap the stream to count bytes
+	const reader = response.body.getReader();
+	const stream = new ReadableStream<Uint8Array>({
+		async pull(controller) {
+			const { done, value } = await reader.read();
+			if (done) {
+				controller.close();
+				return;
+			}
+
+			loadedBytes += value.length;
+			if (total) {
+				loadingBar.updateProgress(progress + (loadedBytes / total) * totalLoadingValue);
+			}
+
+			controller.enqueue(value);
+		}
+	});
+
+	for await (const feature of deserialize(stream)) {
+		features.push(feature);
+	}
+
+	loadingBar.updateProgress(progress + totalLoadingValue);
+	return features;
 }
 
 export { processArrowData, buildPopupMessage, loadFlatGeobuf };
