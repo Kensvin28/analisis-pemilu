@@ -326,17 +326,13 @@
 		<div>Source: <a href="https://github.com/kawalpemilu">Kawal Pemilu</a>*</div>
 		<div class="disclaimer">
 			*Disclaimer: The data taken from Kawal Pemilu is incomplete, thus the visualization may not
-			reflect the complete and final result published by KPU.
+			reflect the complete and final result published by KPU. For more information, please read the
+			<a href="/about">about</a> page.
 		</div>
 	</footer>
 </div>
 
 <style>
-	h1 {
-		text-align: center;
-		font-weight: bold;
-	}
-
 	footer {
 		display: flex;
 		flex-direction: column;
