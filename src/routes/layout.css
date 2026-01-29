@@ -1,2 +1,16 @@
 @import 'tailwindcss';
 @import 'maplibre-gl/dist/maplibre-gl.css';
+
+a {
+    text-decoration: underline;
+}
+
+a:hover {
+    color: goldenrod;
+}
+
+h1 {
+    text-align: center;
+    font-weight: bold;
+    margin-bottom: 1rem;
+}

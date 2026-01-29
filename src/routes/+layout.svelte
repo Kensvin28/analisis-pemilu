@@ -12,6 +12,7 @@
 
 <nav>
 	<a href="/" class="nav-link">Pilpres 2014 vs 2019</a>
+	<a href="/about" class="nav-link">About</a>
 </nav>
 {@render children()}
 
